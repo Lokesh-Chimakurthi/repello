@@ -1,0 +1,29 @@
+[project]
+name = "rep"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "crawl4ai>=0.6.3",
+    "exa-py>=1.13.1",
+    "notebook>=7.4.3",
+    "pydantic-ai-slim>=0.2.12",
+]
+
+
+[tool.ruff]
+line-length = 93
+exclude = [
+    ".venv",
+    "venv",
+    ".git",
+    ".pyenv",
+    "__init__.py",
+    ".ipynb_checkpoints",
+    ".ruff_cache",
+    "__pycache__"
+]
+ignore = [
+    "F541" #f-string without any placeholders
+]
