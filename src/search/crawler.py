@@ -9,7 +9,25 @@ from crawl4ai.content_filter_strategy import PruningContentFilter
 from src.utils.logger import get_logger
 from src.models import ExtractionResult
 
+from groq import Groq
+
 logger = get_logger()
+
+client = Groq()
+
+
+def llama_guard(text: str) -> float:
+    completion = client.chat.completions.create(
+        model="meta-llama/llama-prompt-guard-2-86m",
+        messages=[{"role": "user", "content": text}],
+        temperature=1,
+        max_completion_tokens=100,
+        top_p=1,
+        stream=False,
+        stop=None,
+    )
+
+    return float(completion.choices[0].message.content)
 
 
 class ContentExtractor:
@@ -141,16 +159,23 @@ class ContentExtractor:
                 f"Successfully extracted {len(cleaned_content)} characters from {url}"
             )
 
-            return ExtractionResult(
-                url=url, success=True, content=cleaned_content, title=title
-            )
+            guard_result = llama_guard(cleaned_content)
+
+            if guard_result > 0.6:
+                return ExtractionResult(
+                    url=url, success=True, content=cleaned_content, title=title
+                )
+            else:
+                return ExtractionResult(
+                    url=url, success=False, error="Content blocked by Llama Guard"
+                )
 
         except Exception as e:
             logger.error(f"Content extraction failed for {url}: {str(e)}")
             return ExtractionResult(url=url, success=False, error=str(e))
 
     async def extract_multiple(
-        self, urls: list[str], max_concurrent: int = 5, content_filter: Optional[str] = None
+        self, urls: list[str], max_concurrent: int = 10, content_filter: Optional[str] = None
     ) -> dict[str, ExtractionResult]:
         """Extract content from multiple URLs concurrently.
 
@@ -167,12 +192,12 @@ class ContentExtractor:
 
         logger.info(f"Extracting content from {len(urls)} URLs")
 
-        semaphore = asyncio.Semaphore(max_concurrent)
+        # semaphore = asyncio.Semaphore(max_concurrent)
 
         async def bounded_extract(url: str) -> tuple[str, ExtractionResult]:
-            async with semaphore:
-                result = await self.extract_content(url, content_filter)
-                return url, result
+            # async with semaphore:
+            result = await self.extract_content(url, content_filter)
+            return url, result
 
         # Execute extractions concurrently
         results = await asyncio.gather(
@@ -193,6 +218,8 @@ class ContentExtractor:
         logger.info(
             f"Content extraction completed: {successful_extractions}/{len(urls)} successful"
         )
+
+        logger.debug(f"extract_multiple returned: {extraction_results}")
 
         return extraction_results
 

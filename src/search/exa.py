@@ -24,7 +24,7 @@ class ExaSearchTool:
         query: str,
         search_type: str = "auto",
         category: Optional[str] = None,
-        num_results: int = 10,
+        num_results: int = 5,
         include_domains: Optional[list[str]] = None,
         exclude_domains: Optional[list[str]] = None,
         start_crawl_date: Optional[str] = None,
@@ -169,7 +169,7 @@ class ExaSearchTool:
         return asyncio.run(self.search(query, **kwargs))
 
     async def multi_search(
-        self, queries: list[str], max_concurrent: int = 5, **kwargs
+        self, queries: list[str], max_concurrent: int = 10, **kwargs
     ) -> list[list[SearchResult]]:
         """
         Perform multiple searches concurrently.
@@ -190,11 +190,11 @@ class ExaSearchTool:
 
         logger.info(f"Performing {len(queries)} concurrent searches")
 
-        semaphore = asyncio.Semaphore(max_concurrent)
+        # semaphore = asyncio.Semaphore(max_concurrent)
 
         async def bounded_search(query: str) -> SearchResult:
-            async with semaphore:
-                return await self.search(query, **kwargs)
+            # async with semaphore:
+            return await self.search(query, **kwargs)
 
         results = await asyncio.gather(
             *[bounded_search(query) for query in queries], return_exceptions=True
@@ -205,9 +205,9 @@ class ExaSearchTool:
         for i, result in enumerate(results):
             if isinstance(result, ExaSearchException):
                 logger.error(f"Search failed for query '{queries[i]}': {str(result)}")
-                processed_results.append([])  # Return empty list for failed searches
+                processed_results.extend([])  # Return empty list for failed searches
             else:
-                processed_results.append(result)
+                processed_results.extend(result)
 
         logger.info(f"Multi-search completed. {len(processed_results)} responses returned")
         return processed_results
