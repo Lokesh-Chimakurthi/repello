@@ -12,3 +12,4 @@ wheels/
 notebooks
 logs
 .github/copilot-instructions.md
+__init__.py
